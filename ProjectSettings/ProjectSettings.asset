@@ -142,10 +142,7 @@ PlayerSettings:
   tvOSBundleVersion: 1.0
   bundleVersion: 0.1
   preloadedAssets:
-  - {fileID: -3097128892601390737, guid: d474d85fa33a480469115ff6ffbfdb7c, type: 2}
-  - {fileID: 11400000, guid: c44688682a1951f47a03a16358df9fb2, type: 2}
   - {fileID: 11400000, guid: 1a8ff74ba8642b64b8f3571feda5d0ee, type: 2}
-  - {fileID: 8744306591963988170, guid: 8fd18829617fbfb41854f6ad15eed4a5, type: 2}
   metroInputSource: 0
   wsaTransparentSwapchain: 0
   m_HolographicPauseOnTrackingLoss: 1
@@ -436,8 +433,8 @@ PlayerSettings:
     m_GraphicsJobMode: 0
   m_BuildTargetGraphicsAPIs:
   - m_BuildTarget: AndroidPlayer
-    m_APIs: 150000000b000000
-    m_Automatic: 1
+    m_APIs: 15000000
+    m_Automatic: 0
   - m_BuildTarget: iOSSupport
     m_APIs: 10000000
     m_Automatic: 1

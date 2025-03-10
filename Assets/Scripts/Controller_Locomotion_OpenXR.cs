@@ -4,6 +4,10 @@ using UnityEngine.InputSystem;
 using UnityEngine.XR;
 using UnityEngine.XR.Interaction.Toolkit;
 
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
+
 // VR Locomotion controller that handles both translation and rotation in virtual reality
 // Translation is controlled via thumbstick input with configurable forward direction
 // Rotation can be handled through physical head movement and/or virtual rotation via thumbstick
@@ -631,9 +635,9 @@ public class Controller_Locomotion_OpenXR : MonoBehaviour
             float yawDifference = Mathf.DeltaAngle(currentYaw, calibratedForwardYaw);
 
             info += $"Scrolling Rotation:\n" +
-                   $"Yaw Difference: {yawDifference:F1}°\n" +
+                   $"Yaw Difference: {yawDifference:F1}ï¿½\n" +
                    $"Calibrated: {isCalibrated}\n" +
-                   $"Threshold: {scrollingThresholdAngle}°\n";
+                   $"Threshold: {scrollingThresholdAngle}ï¿½\n";
         }
         else if (rotationMethod == VirtualRotationMethod.RotationGains)
         {
@@ -653,220 +657,118 @@ public class Controller_Locomotion_OpenXR : MonoBehaviour
 
     // Gizmo drawing methods remain unchanged
     private void OnDrawGizmos()
+{
+#if UNITY_EDITOR
+    if (!UnityEngine.Application.isPlaying || !showGizmos) return;
+
+    Vector3 origin = hmdTransform.position + Vector3.back * 2f;
+
+    if (cachedForwardDir != Vector3.zero)
     {
-        if (!UnityEngine.Application.isPlaying || !showGizmos) return;
-
-        Vector3 origin = hmdTransform.position + Vector3.back * 2f;
-
-        if (cachedForwardDir != Vector3.zero)
+        if (!separateJoystickVisualization)
         {
-            if (!separateJoystickVisualization)
-            {
-                DrawDirectionGizmos(origin);
-            }
-            else
-            {
-                DrawDirectionGizmos(origin);
-                DrawJoystickGizmos(origin + Vector3.right * 2.5f);
-            }
+            DrawDirectionGizmos(origin);
+        }
+        else
+        {
+            DrawDirectionGizmos(origin);
+            DrawJoystickGizmos(origin + Vector3.right * 2.5f);
         }
     }
+#endif
+}
 
-    private void DrawDirectionGizmos(Vector3 origin)
+   private void DrawDirectionGizmos(Vector3 origin)
+{
+    Vector3 displayForwardDir = cachedForwardDir;
+    Vector3 displayRightDir = cachedRightDir;
+    Vector3 displayUpDir = Vector3.up;
+
+    // Transform the direction vectors to world space while maintaining fixed rotation
+    if (directionDevice == ForwardDirectionInputDevice.Controller)
     {
-        Vector3 displayForwardDir = cachedForwardDir;
-        Vector3 displayRightDir = cachedRightDir;
-        Vector3 displayUpDir = Vector3.up;
-
-        // Transform the direction vectors to world space while maintaining fixed rotation
-        if (directionDevice == ForwardDirectionInputDevice.Controller)
-        {
-            if (gizmoMode == GizmoVisualizationMode.ThreeDimensional)
-            {
-                displayForwardDir = gizmoRotation * controller.transform.forward;
-                displayRightDir = gizmoRotation * controller.transform.right;
-                displayUpDir = gizmoRotation * controller.transform.up;
-            }
-            else
-            {
-                // 2D mode - flatten the vectors
-                Vector3 forward = controller.transform.forward;
-                forward.y = 0;
-                forward.Normalize();
-                displayForwardDir = gizmoRotation * forward;
-
-                Vector3 right = controller.transform.right;
-                right.y = 0;
-                right.Normalize();
-                displayRightDir = gizmoRotation * right;
-            }
-        }
-        else if (directionDevice == ForwardDirectionInputDevice.Camera)
-        {
-            if (gizmoMode == GizmoVisualizationMode.ThreeDimensional)
-            {
-                displayForwardDir = gizmoRotation * hmdTransform.forward;
-                displayRightDir = gizmoRotation * hmdTransform.right;
-                displayUpDir = gizmoRotation * hmdTransform.up;
-            }
-            else
-            {
-                Vector3 forward = hmdTransform.forward;
-                forward.y = 0;
-                forward.Normalize();
-                displayForwardDir = gizmoRotation * forward;
-                displayRightDir = gizmoRotation * Vector3.Cross(Vector3.up, forward);
-            }
-        }
-        else if (directionDevice == ForwardDirectionInputDevice.Body && bodyTransform != null)
-        {
-            if (gizmoMode == GizmoVisualizationMode.ThreeDimensional)
-            {
-                displayForwardDir = gizmoRotation * bodyTransform.forward;
-                displayRightDir = gizmoRotation * bodyTransform.right;
-                displayUpDir = gizmoRotation * bodyTransform.up;
-            }
-            else
-            {
-                Vector3 forward = bodyTransform.forward;
-                forward.y = 0;
-                forward.Normalize();
-                displayForwardDir = gizmoRotation * forward;
-
-                Vector3 right = bodyTransform.right;
-                right.y = 0;
-                right.Normalize();
-                displayRightDir = gizmoRotation * right;
-            }
-        }
-
-        // Draw reference coordinate system
-        Gizmos.color = Color.blue;
-        Gizmos.DrawLine(gizmoPosition, gizmoPosition + displayForwardDir);
-        DrawArrowhead(gizmoPosition + displayForwardDir, displayForwardDir, 0.1f, Color.blue);
-
-        Gizmos.color = Color.red;
-        Gizmos.DrawLine(gizmoPosition, gizmoPosition + displayRightDir);
-        DrawArrowhead(gizmoPosition + displayRightDir, displayRightDir, 0.1f, Color.red);
-
         if (gizmoMode == GizmoVisualizationMode.ThreeDimensional)
         {
-            Gizmos.color = Color.green;
-            Gizmos.DrawLine(gizmoPosition, gizmoPosition + displayUpDir);
-            DrawArrowhead(gizmoPosition + displayUpDir, displayUpDir, 0.1f, Color.green);
+            displayForwardDir = gizmoRotation * controller.transform.forward;
+            displayRightDir = gizmoRotation * controller.transform.right;
+            displayUpDir = gizmoRotation * controller.transform.up;
         }
-
-        // Draw controller input direction
-        if (currentJoystickInput.magnitude > movementDeadZone)
+        else
         {
-            // Calculate the input direction in world space based on the direction device
-            Vector3 inputDirection;
-            if (directionMode == ForwardDirectionMode.Continuous || !isMoving)
-            {
-                // Use current direction vectors
-                inputDirection = (displayForwardDir * currentJoystickInput.y +
-                                displayRightDir * currentJoystickInput.x).normalized;
-            }
-            else
-            {
-                // Use initial direction vectors for the entire movement
-                inputDirection = (initialForwardDir * currentJoystickInput.y +
-                                initialRightDir * currentJoystickInput.x).normalized;
-            }
+            Vector3 forward = controller.transform.forward;
+            forward.y = 0;
+            forward.Normalize();
+            displayForwardDir = gizmoRotation * forward;
 
-            float inputMagnitude = currentJoystickInput.magnitude;
-            Vector3 scaledInputDir = inputDirection * inputMagnitude;
-
-            // Draw the actual movement direction
-            Gizmos.color = Color.yellow;
-            Gizmos.DrawLine(gizmoPosition, gizmoPosition + scaledInputDir);
-            DrawArrowhead(gizmoPosition + scaledInputDir, scaledInputDir, 0.1f, Color.yellow);
-
-            // Draw raw controller input as a separate vector (in cyan)
-            Vector3 rawInputDir = new Vector3(currentJoystickInput.x, 0, currentJoystickInput.y).normalized;
-            Vector3 rawScaledInputDir = rawInputDir * inputMagnitude;
-
-            // Offset the raw input visualization slightly upward to distinguish it
-            Vector3 rawInputOrigin = gizmoPosition + Vector3.up * 0.1f;
-            Gizmos.color = Color.cyan;
-            Gizmos.DrawLine(rawInputOrigin, rawInputOrigin + rawScaledInputDir);
-            DrawArrowhead(rawInputOrigin + rawScaledInputDir, rawScaledInputDir, 0.1f, Color.cyan);
-
-            // Add vector labels slightly offset from the arrows
-            UnityEditor.Handles.color = Color.white;
-            UnityEditor.Handles.Label(gizmoPosition + scaledInputDir + Vector3.up * 0.1f, "Adjusted Direction");
-            UnityEditor.Handles.Label(rawInputOrigin + rawScaledInputDir + Vector3.up * 0.1f, "Raw Input");
-        }
-
-        // Draw text information below the gizmo
-        Vector3 textPosition = gizmoPosition + Vector3.down * 0.5f;
-        UnityEditor.Handles.color = Color.white;
-        string configInfo = $"Direction Device: {directionDevice}\nDirection Mode: {directionMode}";
-        UnityEditor.Handles.Label(textPosition, configInfo);
-
-        // Draw scrolling rotation visualization if enabled
-        if (rotationMethod == VirtualRotationMethod.Scrolling && isCalibrated)
-        {
-            float radius = 1f;
-            Vector3 calibratedForward = gizmoRotation * (Quaternion.Euler(0, calibratedForwardYaw, 0) * Vector3.forward);
-
-            // Draw calibrated forward direction
-            Gizmos.color = Color.cyan;
-            Gizmos.DrawLine(gizmoPosition, gizmoPosition + calibratedForward);
-            DrawArrowhead(gizmoPosition + calibratedForward, calibratedForward, 0.1f, Color.cyan);
-
-            // Draw threshold indicators
-            Color thresholdColor = new Color(1f, 1f, 0f, 0.3f);
-            Vector3 positiveThresholdDir = gizmoRotation * (Quaternion.Euler(0, calibratedForwardYaw + scrollingThresholdAngle, 0) * Vector3.forward);
-            Vector3 negativeThresholdDir = gizmoRotation * (Quaternion.Euler(0, calibratedForwardYaw - scrollingThresholdAngle, 0) * Vector3.forward);
-
-            Gizmos.color = thresholdColor;
-            Gizmos.DrawLine(gizmoPosition, gizmoPosition + positiveThresholdDir);
-            Gizmos.DrawLine(gizmoPosition, gizmoPosition + negativeThresholdDir);
-            DrawArrowhead(gizmoPosition + positiveThresholdDir, positiveThresholdDir, 0.1f, thresholdColor);
-            DrawArrowhead(gizmoPosition + negativeThresholdDir, negativeThresholdDir, 0.1f, thresholdColor);
-
-            // Get current head yaw and calculate difference
-            float currentYaw = hmdTransform.eulerAngles.y;
-            float yawDifference = Mathf.DeltaAngle(currentYaw, calibratedForwardYaw);
-            Vector3 currentHeadForward = gizmoRotation * (Quaternion.Euler(0, currentYaw, 0) * Vector3.forward);
-
-            // Draw current head direction
-            Gizmos.color = Color.white;
-            Gizmos.DrawLine(gizmoPosition, gizmoPosition + currentHeadForward);
-            DrawArrowhead(gizmoPosition + currentHeadForward, currentHeadForward, 0.1f, Color.white);
-
-            // Add scrolling rotation information below the main configuration text
-            Vector3 scrollingTextPosition = textPosition + Vector3.down * 0.3f;
-            string scrollingInfo = $"Yaw Difference: {yawDifference:F1}°\n" +
-                                 $"Threshold: ±{scrollingThresholdAngle}°\n" +
-                                 (Mathf.Abs(yawDifference) > scrollingThresholdAngle ?
-                                 $"Over Threshold: {(Mathf.Abs(yawDifference) - scrollingThresholdAngle):F1}°" :
-                                 "Within Threshold");
-            UnityEditor.Handles.Label(scrollingTextPosition, scrollingInfo);
-
-            // Draw rotation arcs if movement detected
-            if (Mathf.Abs(yawDifference) > 0.1f)
-            {
-                bool isRotatingRight = yawDifference > 0;
-                float thresholdAngle = calibratedForwardYaw + (scrollingThresholdAngle * (isRotatingRight ? 1 : -1));
-                Vector3 thresholdDir = gizmoRotation * (Quaternion.Euler(0, thresholdAngle, 0) * Vector3.forward);
-
-                if (Mathf.Abs(yawDifference) <= scrollingThresholdAngle)
-                {
-                    Color preThresholdColor = new Color(0.5f, 1f, 0.5f, 0.5f);
-                    DrawArcBetweenVectors(gizmoPosition, calibratedForward, currentHeadForward, radius, preThresholdColor);
-                }
-                else
-                {
-                    Color preThresholdColor = new Color(0.5f, 1f, 0.5f, 0.5f);
-                    DrawArcBetweenVectors(gizmoPosition, calibratedForward, thresholdDir, radius, preThresholdColor);
-                    Color postThresholdColor = new Color(1f, 0.5f, 0.5f, 0.5f);
-                    DrawArcBetweenVectors(gizmoPosition, thresholdDir, currentHeadForward, radius, postThresholdColor);
-                }
-            }
+            Vector3 right = controller.transform.right;
+            right.y = 0;
+            right.Normalize();
+            displayRightDir = gizmoRotation * right;
         }
     }
+    else if (directionDevice == ForwardDirectionInputDevice.Camera)
+    {
+        if (gizmoMode == GizmoVisualizationMode.ThreeDimensional)
+        {
+            displayForwardDir = gizmoRotation * hmdTransform.forward;
+            displayRightDir = gizmoRotation * hmdTransform.right;
+            displayUpDir = gizmoRotation * hmdTransform.up;
+        }
+        else
+        {
+            Vector3 forward = hmdTransform.forward;
+            forward.y = 0;
+            forward.Normalize();
+            displayForwardDir = gizmoRotation * forward;
+            displayRightDir = gizmoRotation * Vector3.Cross(Vector3.up, forward);
+        }
+    }
+    else if (directionDevice == ForwardDirectionInputDevice.Body && bodyTransform != null)
+    {
+        if (gizmoMode == GizmoVisualizationMode.ThreeDimensional)
+        {
+            displayForwardDir = gizmoRotation * bodyTransform.forward;
+            displayRightDir = gizmoRotation * bodyTransform.right;
+            displayUpDir = gizmoRotation * bodyTransform.up;
+        }
+        else
+        {
+            Vector3 forward = bodyTransform.forward;
+            forward.y = 0;
+            forward.Normalize();
+            displayForwardDir = gizmoRotation * forward;
+
+            Vector3 right = bodyTransform.right;
+            right.y = 0;
+            right.Normalize();
+            displayRightDir = gizmoRotation * right;
+        }
+    }
+
+    // Draw reference coordinate system
+    Gizmos.color = Color.blue;
+    Gizmos.DrawLine(gizmoPosition, gizmoPosition + displayForwardDir);
+    DrawArrowhead(gizmoPosition + displayForwardDir, displayForwardDir, 0.1f, Color.blue);
+
+    Gizmos.color = Color.red;
+    Gizmos.DrawLine(gizmoPosition, gizmoPosition + displayRightDir);
+    DrawArrowhead(gizmoPosition + displayRightDir, displayRightDir, 0.1f, Color.red);
+
+    if (gizmoMode == GizmoVisualizationMode.ThreeDimensional)
+    {
+        Gizmos.color = Color.green;
+        Gizmos.DrawLine(gizmoPosition, gizmoPosition + displayUpDir);
+        DrawArrowhead(gizmoPosition + displayUpDir, displayUpDir, 0.1f, Color.green);
+    }
+
+#if UNITY_EDITOR
+    // Draw text information below the gizmo
+    Vector3 textPosition = gizmoPosition + Vector3.down * 0.5f;
+    Handles.color = Color.white;
+    string configInfo = $"Direction Device: {directionDevice}\nDirection Mode: {directionMode}";
+    Handles.Label(textPosition, configInfo);
+#endif
+}
 
 
     // Add new helper method for drawing arcs
@@ -889,54 +791,46 @@ public class Controller_Locomotion_OpenXR : MonoBehaviour
     }
 
     private void DrawJoystickGizmos(Vector3 origin)
+{
+#if UNITY_EDITOR
+    Vector3 moveOrigin = origin;
+    Gizmos.color = new Color(1f, 0.5f, 0f, 0.5f);
+    DrawCircle(moveOrigin, movementDeadZone);
+
+    Gizmos.color = new Color(0f, 1f, 0f, 0.5f);
+    DrawCircle(moveOrigin, 1f);
+
+    if (currentJoystickInput != Vector2.zero)
     {
-        // Draw movement joystick visualization
-        Vector3 moveOrigin = origin;
+        Gizmos.color = Color.yellow;
+        Vector3 inputDir = new Vector3(currentJoystickInput.x, 0, currentJoystickInput.y);
+        Gizmos.DrawLine(moveOrigin, moveOrigin + inputDir);
+        DrawArrowhead(moveOrigin + inputDir, inputDir, 0.1f, Color.yellow);
+    }
 
-        // Movement deadzone circle
-        Gizmos.color = new Color(1f, 0.5f, 0f, 0.5f);
-        DrawCircle(moveOrigin, movementDeadZone);
+    if (virtualRotationEnabled)
+    {
+        Vector3 rotateOrigin = origin + Vector3.right * 2.5f;
 
-        // Movement max range circle
-        Gizmos.color = new Color(0f, 1f, 0f, 0.5f);
-        DrawCircle(moveOrigin, 1f);
+        Gizmos.color = new Color(1f, 0.5f, 1f, 0.5f);
+        DrawCircle(rotateOrigin, rotationDeadZone);
 
-        // Current movement input
-        if (currentJoystickInput != Vector2.zero)
+        Gizmos.color = new Color(1f, 0f, 1f, 0.5f);
+        DrawCircle(rotateOrigin, 1f);
+
+        if (currentRotationInput != Vector2.zero)
         {
-            Gizmos.color = Color.yellow;
-            Vector3 inputDir = new Vector3(currentJoystickInput.x, 0, currentJoystickInput.y);
-            Gizmos.DrawLine(moveOrigin, moveOrigin + inputDir);
-            DrawArrowhead(moveOrigin + inputDir, inputDir, 0.1f, Color.yellow);
-        }
+            Gizmos.color = Color.magenta;
+            Vector3 rotInputDir = new Vector3(currentRotationInput.x, 0, currentRotationInput.y);
+            Gizmos.DrawLine(rotateOrigin, rotateOrigin + rotInputDir);
+            DrawArrowhead(rotateOrigin + rotInputDir, rotInputDir, 0.1f, Color.magenta);
 
-        // Draw rotation joystick visualization
-        if (virtualRotationEnabled)
-        {
-            Vector3 rotateOrigin = origin + Vector3.right * 2.5f;
-
-            // Rotation deadzone circle
-            Gizmos.color = new Color(1f, 0.5f, 1f, 0.5f); // Pink-ish for rotation
-            DrawCircle(rotateOrigin, rotationDeadZone);
-
-            // Rotation max range circle
-            Gizmos.color = new Color(1f, 0f, 1f, 0.5f); // Magenta for rotation
-            DrawCircle(rotateOrigin, 1f);
-
-            // Current rotation input
-            if (currentRotationInput != Vector2.zero)
-            {
-                Gizmos.color = Color.magenta;
-                Vector3 rotInputDir = new Vector3(currentRotationInput.x, 0, currentRotationInput.y);
-                Gizmos.DrawLine(rotateOrigin, rotateOrigin + rotInputDir);
-                DrawArrowhead(rotateOrigin + rotInputDir, rotInputDir, 0.1f, Color.magenta);
-
-                // Display rotation state
-                string stateText = isRotating ? "Rotating" : (canAcceptRotationInput ? "Ready" : "Waiting");
-                UnityEditor.Handles.Label(rotateOrigin + Vector3.up * 0.2f, stateText);
-            }
+            string stateText = isRotating ? "Rotating" : (canAcceptRotationInput ? "Ready" : "Waiting");
+            Handles.Label(rotateOrigin + Vector3.up * 0.2f, stateText);
         }
     }
+#endif
+}
 
     private void DrawArrowhead(Vector3 position, Vector3 direction, float size, Color color)
     {
