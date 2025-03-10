@@ -1,18 +1,44 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
-public class NewBehaviourScript : MonoBehaviour
+public class VelociraptorController : MonoBehaviour
 {
-    // Start is called before the first frame update
+    private Animator animator;
+
     void Start()
     {
-        
+        animator = GetComponent<Animator>();
     }
 
-    // Update is called once per frame
     void Update()
     {
-        
+        // A Button → Idle Animation
+        if (OVRInput.GetDown(OVRInput.Button.One))
+        {
+            animator.SetTrigger("IdleTrigger");
+        }
+
+        // B Button → Roar Animation
+        if (OVRInput.GetDown(OVRInput.Button.Two))
+        {
+            animator.SetTrigger("RoarTrigger");
+        }
+
+        // Thumbstick Press → Run Animation
+        if (OVRInput.GetDown(OVRInput.Button.PrimaryThumbstick))
+        {
+            animator.SetTrigger("RunTrigger");
+        }
+
+        // Grip Button (Hand Trigger) → Attack Animation
+        if (OVRInput.GetDown(OVRInput.Button.PrimaryHandTrigger))
+        {
+            animator.SetTrigger("AttackTrigger");
+        }
+
+        // Index Trigger → Death Animation
+        if (OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger))
+        {
+            animator.SetTrigger("DeathTrigger");
+        }
     }
 }
